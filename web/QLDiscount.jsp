@@ -16,61 +16,102 @@
         <meta name="description" content="">
         <meta name="author" content="">
         <%@include file="adminindex.jsp" %>
-        <title>QLProduct</title>
+        <title>QLDiscount</title>
 
         <script type="text/javascript">
+            var check = true;
             $(function () {
                 $(document).on("click", "#editbutton", function () {
                     $.ajax({
                         type: "get",
-                        url: "qlsp", //this is my servlet
+                        url: "qlgg", //this is my servlet
                         data: {
-                            action: "getProduct",
+                            action: "getDiscount",
                             id: $(this).val()
                         },
                         success: function (msg) {
-                            var product = $.parseJSON(msg);
+                            var discount = $.parseJSON(msg);
+                            $('#e_percent').val(discount.discount_percent);
+                            $('#e_name').val(discount.name);
+                            $('#e_active').val(discount.active);
+                            $('#e_coupon').val(discount.coupon);
+                            $('#d_id').val(discount.id);
+                            if (discount.deleted_at != null) {
+                                $('#eSubmit_btn').attr("type", "hidden");
+                            } else {
+                                $('#eSubmit_btn').attr("type", "button");
+                            }
                         }
-
                     });
                 });
-                
-                $(document).on("click", "#deletebutton", function () {
-                    alert("qlsp?action=del&id="+$(this).val());
-                    document.getElementById('del_servlet').href = "qlsp?action=del&"+$(this).val(); 
+
+                $(document).on("click", "#aSubmit_btn", function () {
+                    if (check) {
+                        $.ajax({
+                            type: "get",
+                            url: "qlgg", //this is my servlet
+                            data: {
+                                action: "add",
+                                percent: $('#percent').val(),
+                                name: $('#name').val(),
+                                active: $('#active').val(),
+                                coupon: $('#coupon').val(),
+                            },
+                            success: function (msg) {
+                                alert("Success");
+                                location.reload();
+                            }
+                        });
+                    } else {
+                        alert("Check your coupon again");
+                    }
+                });
+
+                $(document).on("click", "#eSubmit_btn", function () {
+                    if (check) {
+                        $.ajax({
+                            type: "get",
+                            url: "qlgg", //this is my servlet
+                            data: {
+                                action: "edit",
+                                percent: $('#e_percent').val(),
+                                name: $('#e_name').val(),
+                                active: $('#e_active').val(),
+                                coupon: $('#e_coupon').val(),
+                                id: $('#d_id').val()
+                            },
+                            success: function (msg) {
+                                alert("Success");
+                                location.reload();
+                            }
+                        });
+                    } else {
+                        alert("Check your coupon again");
+                    }
                 });
             });
-            function checkEmail()
+
+            function checkCoupon(id)
             {
-                $.ajax({
-                    type: "get",
-                    url: "user", //this is my servlet
-                    data: {
-                        action: "checkEmail",
-                        email: $("#email").val()
-                    },
-                    success: function (msg) {
-                        $("#alert-email").removeAttr("hidden");
-                        $("#alert-email").text(msg);
-                    }
-                });
-            }
-
-
-
-            function checkPhone()
-            {
-                $.ajax({
-                    type: "get",
-                    url: "user", //this is my servlet
-                    data: {
-                        action: "checkPhone",
-                        email: $("#email").val()
-                    },
-                    success: function (msg) {
-                        $('#output').append(msg);
-                    }
-                });
+                var coupon = $(id).val();
+                if (coupon !== '') {
+                    $.ajax({
+                        type: "get",
+                        url: "qlgg", //this is my servlet
+                        data: {
+                            action: "checkCoupon",
+                            coupon: coupon
+                        },
+                        success: function (msg) {
+                            if (msg == "Invalid coupon") {
+                                check = false;
+                            } else {
+                                check = true;
+                            }
+                            alert(msg);
+                        }
+                    });
+                }
             }
         </script>
     </head>
@@ -87,9 +128,9 @@
         <div class="container-fluid">
 
             <!-- Page Heading -->
-            <h1 class="h3 mb-2 text-gray-800">Danh sach san pham</h1>
+            <h1 class="h3 mb-2 text-gray-800">Discount List</h1>
             <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                <a data-target="#addModal" data-toggle="modal" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">Them tai khoan</a>
+                <a data-target="#addModal" data-toggle="modal" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">Add Discount</a>
             </div>
             <!-- DataTales Example -->
             <div class="card shadow mb-4">
@@ -134,7 +175,7 @@
                                         <td>${d.modified_at}</td>
                                         <td>${d.deleted_at}</td>
                                         <td><button class='btn btn-default' id="editbutton" value="${d.id}" data-target="#editModal" data-toggle="modal"><em class='fa fa-pencil-ruler'></em></button>
-                                            <button class='btn btn-default' id="deletebutton" value="${d.id}" data-target="#deleteModal" data-toggle="modal"><em class='fa fa-trash'></em></button>
+                                            <a class='btn btn-default' href="qlgg?action=delete&id=${d.id}"><em class='fa fa-trash'></em></a></td>
                                     </tr>
                                 </c:forEach>
                             </tbody>
@@ -163,7 +204,7 @@
         <div class="modal-content">
             <form action="qlsp" method="post" enctype='multipart/form-data'>
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Add Product</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Add Discount</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -174,37 +215,24 @@
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Price</label>
-                        <input type="number" min="0" class="form-control" id="" name="price" required>
+                        <label for="recipient-name" class="col-form-label">Discount Percent</label>
+                        <input type="number" min="0" max="100" class="form-control" id="percent" name="price" required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Quantity</label>
-                        <input type="number" min="0" class="form-control" id="" name="quant" required>
+                        <label for="recipient-name" class="col-form-label">Coupon</label>
+                        <input type="text" onfocusout="checkCoupon(this)"  class="form-control" id="coupon"  required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Discount</label>
-                        <select width="100%" name="d_id" id="d_id">
-                            <c:forEach items="${discount}" var="l">
-                                <option value="${l.id}">${l.name}</option>
-                            </c:forEach>
+                        <label for="recipient-name" class="col-form-label">Active</label>
+                        <select width="100%" name="d_id" id="active">
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Category</label>
-                        <select width="100%" name="c_id" id="c_id">
-                            <c:forEach items="${category}" var="c">
-                                <option value="${c.id}">${c.name}</option>
-                            </c:forEach>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Image</label>
-                        <input type="file" class="form-control" id="" name="image" accept="image/png, image/jpeg" required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <input type="hidden" value="add" name="action"></input>
-                    <input value="Submit" type="submit" class="btn btn-primary"></input>
+                    <input type="hidden" value="edit" name="action"></input>
+                    <input  id="aSubmit_btn" value="Submit" type="button" class="btn btn-primary"></input>
                 </div>
             </form>
         </div>
@@ -224,45 +252,30 @@
                     </button>
                 </div>
                 <div class="modal-body">
-
                     <div class="form-group">
                         <label for="recipient-name" class="col-form-label">Name</label>
-                        <input type="text" class="form-control" id="e_name" name="e_name">
+                        <input type="text" class="form-control" id="e_name" name="e_name" required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Price</label>
-                        <input type="number" class="form-control" id="e_price" name="e_price">
+                        <label for="recipient-name" class="col-form-label">Discount Percent</label>
+                        <input type="number" min="0" max="100" class="form-control" id="e_percent" name="e_percent" required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Quantity</label>
-                        <input type="number" min="0" class="form-control" id="e_quant" name="e_quant" required>
+                        <label for="recipient-name" class="col-form-label">Coupon</label>
+                        <input type="text" onfocusout="checkCoupon(this)"  class="form-control" id="e_coupon"  required>
                     </div>
                     <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Discount ID</label>
-                        <select name="e_d_id" id="e_d_id">
-                            <c:forEach items="${discount}" var="l">
-                                <option value="${l.id}">${l.name}</option>
-                            </c:forEach>
+                        <label for="recipient-name" class="col-form-label">Active</label>
+                        <select width="100%" name="d_id" id="e_active">
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Category</label>
-                        <select width="100%" name="e_c_id" id="e_c_id">
-                            <c:forEach items="${category}" var="c">
-                                <option value="${c.id}">${c.name}</option>
-                            </c:forEach>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="recipient-name" class="col-form-label">Image</label>
-                        <input type="file" class="form-control" id="e_image" name="image" accept="image/png, image/jpeg" >
-                    </div>
+
                 </div>
                 <div class="modal-footer">
-                    <input type="hidden" id="e_i_id"  name="e_i_id"></input>
-                    <input type="hidden" id="id"  name="id"></input>
-                    <input type="hidden" value="edit" name="action"></input>
-                    <input value="Xac nhan" type="submit" class="btn btn-primary"></input>
+                    <input type="hidden" id="d_id" name="action"></input>
+                    <input value="Submit" id="eSubmit_btn" type="button" class="btn btn-primary"></input>
                 </div>
             </form>
         </div>
